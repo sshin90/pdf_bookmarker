@@ -30,7 +30,6 @@ MODEL_OPTIONS = [
     "openrouter/free",
     "google/gemini-2.0-flash-exp:free",
     "google/gemma-3-27b-it:free",
-    "mistralai/pixtral-12b:free",
     "mistralai/mistral-small-3.1-24b-instruct:free",
     "meta-llama/llama-3.3-70b-instruct:free",
 ]

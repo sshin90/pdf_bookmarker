@@ -17,6 +17,15 @@ AVERAGE_TEXT_THRESHOLD = 20  # 텍스트 인식 여부 판별 기준
 TEMPERATURE = 0.1  # LLM 온도(창의성)
 FALLBACK_MODEL = "openrouter/free"
 
+
+def _should_fallback_model(msg: str) -> bool:
+    lower_msg = msg.lower()
+    return (
+        "not a valid model id" in lower_msg
+        or "no endpoints found for" in lower_msg
+        or ("error code: 404" in lower_msg and "model" in lower_msg)
+    )
+
 def get_openrouter_client():
     """
     OpenRouter API 클라이언트를 가져옵니다.
@@ -148,9 +157,9 @@ def _format_llm_error(e: Exception) -> str:
         str: 포맷된 에러 메시지
     """
     s = str(e)
-    if "not a valid model ID" in s:
+    if _should_fallback_model(s):
         return (
-            "선택한 모델 ID가 OpenRouter에서 유효하지 않습니다. "
+            "선택한 모델이 현재 OpenRouter에서 사용 불가합니다. "
             "앱에서 다른 모델을 선택하거나 openrouter/free를 사용해 주세요. "
             f"(원문: {s})"
         )
@@ -329,7 +338,7 @@ def generate_bookmarks_for_pdf(
             )
             logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 응답 수신 완료")
         except Exception as e:
-            if "not a valid model ID" in str(e) and model_name != FALLBACK_MODEL:
+            if _should_fallback_model(str(e)) and model_name != FALLBACK_MODEL:
                 logger.warning(
                     f"선택 모델이 유효하지 않아 fallback 모델로 재시도합니다: {model_name} -> {FALLBACK_MODEL}"
                 )
