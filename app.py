@@ -27,7 +27,8 @@ if not os.environ.get("OPENROUTER_API_KEY"):
 st.set_page_config(page_title="PDF 자동 북마크 생성기", layout="wide")
 
 MODEL_OPTIONS = [
-    "google/gemini-2.0-flash-lite-preview-02-05:free",
+    "openrouter/free",
+    "google/gemini-2.0-flash-exp:free",
     "google/gemma-3-27b-it:free",
     "mistralai/pixtral-12b:free",
     "mistralai/mistral-small-3.1-24b-instruct:free",
@@ -84,7 +85,11 @@ st.markdown(
 
 st.title("📚 PDF 자동 북마크(목차) 생성기")
 st.write("PDF 파일을 업로드하시면 텍스트 문맥을 분석하여 알맞은 북마크(목차)를 제안합니다.")
-selected_model = st.selectbox("사용할 AI 모델(모두 무료)을 선택하세요", MODEL_OPTIONS, index=0)
+selected_model = st.selectbox(
+    "사용할 AI 모델(모두 무료)을 선택하세요 (권장: openrouter/free)",
+    MODEL_OPTIONS,
+    index=0,
+)
 
 uploaded_file = st.file_uploader("PDF 파일을 업로드해주세요.", type=["pdf"])
 

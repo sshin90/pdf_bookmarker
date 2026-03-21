@@ -15,6 +15,7 @@ MAX_CHUNK_SIZE = 500000  # 최대 청크 크기
 TITLE_MAX_LENGTH = 50  # 제목 최대 길이
 AVERAGE_TEXT_THRESHOLD = 20  # 텍스트 인식 여부 판별 기준
 TEMPERATURE = 0.1  # LLM 온도(창의성)
+FALLBACK_MODEL = "openrouter/free"
 
 def get_openrouter_client():
     """
@@ -147,6 +148,12 @@ def _format_llm_error(e: Exception) -> str:
         str: 포맷된 에러 메시지
     """
     s = str(e)
+    if "not a valid model ID" in s:
+        return (
+            "선택한 모델 ID가 OpenRouter에서 유효하지 않습니다. "
+            "앱에서 다른 모델을 선택하거나 openrouter/free를 사용해 주세요. "
+            f"(원문: {s})"
+        )
     if "429" in s and "RESOURCE_EXHAUSTED" in s:
         retry_seconds = _retry_seconds_from_message(s)
         retry_text = (
@@ -209,7 +216,7 @@ def _merge_and_dedupe(candidates: list[dict]) -> list[dict]:
 def generate_bookmarks_for_pdf(
     pdf_bytes: bytes = None,
     extracted_pages: list[dict] = None,
-    model_name: str = "google/gemini-2.0-flash-lite-preview-02-05:free",
+    model_name: str = FALLBACK_MODEL,
 ) -> list[dict]:
     """
     PDF 텍스트를 추출(또는 이미 추출된 페이지 사용)한 뒤,
@@ -300,28 +307,45 @@ def generate_bookmarks_for_pdf(
                 f"--- PAGE {page_num} END ---\n"
             )
 
+        request_messages = [
+            {
+                "role": "system",
+                "content": (
+                    "당신은 PDF TOC(북마크) 추출기입니다. "
+                    "반드시 JSON 객체로만 응답하고 최상위 키는 bookmarks여야 합니다."
+                ),
+            },
+            {"role": "user", "content": prompt},
+            {"role": "user", "content": full_text},
+        ]
+
         try:
             logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 호출 중... ({len(full_text)}자)")
             response = client.chat.completions.create(
                 model=model_name,
                 temperature=TEMPERATURE,
                 response_format={"type": "json_object"},
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "당신은 PDF TOC(북마크) 추출기입니다. "
-                            "반드시 JSON 객체로만 응답하고 최상위 키는 bookmarks여야 합니다."
-                        ),
-                    },
-                    {"role": "user", "content": prompt},
-                    {"role": "user", "content": full_text},
-                ],
+                messages=request_messages,
             )
             logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 응답 수신 완료")
         except Exception as e:
-            logger.error(f"청크 {idx} OpenRouter 호출 실패: {str(e)}")
-            raise RuntimeError(_format_llm_error(e)) from e
+            if "not a valid model ID" in str(e) and model_name != FALLBACK_MODEL:
+                logger.warning(
+                    f"선택 모델이 유효하지 않아 fallback 모델로 재시도합니다: {model_name} -> {FALLBACK_MODEL}"
+                )
+                try:
+                    response = client.chat.completions.create(
+                        model=FALLBACK_MODEL,
+                        temperature=TEMPERATURE,
+                        response_format={"type": "json_object"},
+                        messages=request_messages,
+                    )
+                except Exception as fallback_error:
+                    logger.error(f"청크 {idx} OpenRouter fallback 호출 실패: {str(fallback_error)}")
+                    raise RuntimeError(_format_llm_error(fallback_error)) from fallback_error
+            else:
+                logger.error(f"청크 {idx} OpenRouter 호출 실패: {str(e)}")
+                raise RuntimeError(_format_llm_error(e)) from e
 
         content = (response.choices[0].message.content or "").strip()
         if not content:
