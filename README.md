@@ -1,4 +1,4 @@
-# bookmark_pdf
+# pdf_bookmarker
 
 PDF 파일을 업로드하면 문서 텍스트를 분석해 북마크(목차)를 자동 생성/수정하고, 북마크가 적용된 PDF를 다시 다운로드할 수 있는 Streamlit 앱입니다.
 
@@ -21,8 +21,8 @@ PDF 파일을 업로드하면 문서 텍스트를 분석해 북마크(목차)를
 ### 1) 저장소 클론
 
 ```bash
-git clone <your-repo-url>
-cd bookmark_pdf
+git clone https://github.com/sshin90/pdf_bookmarker.git
+cd pdf_bookmarker
 ```
 
 ### 2) 가상환경 생성/활성화
