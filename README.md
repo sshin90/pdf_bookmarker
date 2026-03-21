@@ -105,6 +105,35 @@ API 호출 시 아래 설정을 사용합니다.
 - 무료 모델에서 429/Rate Limit 발생
   - 잠시 후 재시도하거나 다른 무료 모델로 변경
 
+## Streamlit Cloud 배포 가이드
+
+### 배포 전 주의사항
+
+- 저장소가 `public`인지 확인 (현재 공개 저장소 권장)
+- 엔트리 파일은 `app.py`여야 함
+- 비밀키는 코드/.env에 넣지 말고 **Streamlit Cloud Secrets**에만 저장
+- `runtime.txt`를 통해 Python 버전을 고정 (`python-3.11`)
+- 무료 모델은 속도/가용성이 가변적이므로 429 발생 시 모델을 바꿔 재시도
+
+### 배포 절차
+
+1. Streamlit Cloud 로그인
+2. **New app** 클릭
+3. Repository: `sshin90/pdf_bookmarker`
+4. Branch: `main`
+5. Main file path: `app.py`
+6. Advanced settings > Secrets에 아래 입력 후 Deploy
+
+```toml
+OPENROUTER_API_KEY="your_openrouter_api_key_here"
+```
+
+### 배포 후 점검
+
+- 앱 접속 후 PDF 업로드/북마크 생성 버튼 동작 확인
+- 모델 선택 변경 시 호출 성공 여부 확인
+- OpenRouter 키 누락 시 오류 메시지 노출 확인
+
 ## GitHub 업로드 체크리스트
 
 - [x] `.env`는 `.gitignore`에 포함 (민감정보 커밋 방지)

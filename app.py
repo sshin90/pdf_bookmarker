@@ -15,6 +15,15 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
+# Streamlit Cloud에서는 .env 대신 st.secrets를 주로 사용하므로 폴백 지원
+if not os.environ.get("OPENROUTER_API_KEY"):
+    try:
+        secret_key = st.secrets.get("OPENROUTER_API_KEY", "")
+        if isinstance(secret_key, str) and secret_key.strip():
+            os.environ["OPENROUTER_API_KEY"] = secret_key.strip()
+    except Exception:
+        pass
+
 st.set_page_config(page_title="PDF 자동 북마크 생성기", layout="wide")
 
 MODEL_OPTIONS = [
