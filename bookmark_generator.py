@@ -35,7 +35,8 @@ def get_openrouter_client():
         base_url="https://openrouter.ai/api/v1",
         default_headers={
             "HTTP-Referer": "http://localhost:8501",
-            "X-Title": "PDF 자동 북마크 생성기",
+            # HTTP 헤더 값은 배포 환경에서 ASCII 제한에 걸릴 수 있어 영문으로 고정합니다.
+            "X-Title": "pdf_bookmarker",
         },
     )
 
