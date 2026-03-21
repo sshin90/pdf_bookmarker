@@ -176,7 +176,7 @@ def _format_llm_error(e: Exception) -> str:
         )
     return f"LLM 호출 중 오류가 발생했습니다: {s}"
 
-def _get_cache_path(pdf_bytes: bytes, cache_dir: str) -> str:
+def _get_cache_path(pdf_bytes: bytes, cache_dir: str, model_name: str) -> str:
     """
     PDF의 해시 값을 기반으로 캐시 파일 경로를 생성합니다.
     
@@ -187,7 +187,8 @@ def _get_cache_path(pdf_bytes: bytes, cache_dir: str) -> str:
     Returns:
         str: 캐시 파일 경로
     """
-    h = hashlib.sha256(pdf_bytes).hexdigest()
+    model_key = model_name.encode("utf-8", errors="ignore")
+    h = hashlib.sha256(pdf_bytes + b"::" + model_key).hexdigest()
     return os.path.join(cache_dir, f"bookmarks_{h}.json")
 
 def _merge_and_dedupe(candidates: list[dict]) -> list[dict]:
@@ -226,7 +227,8 @@ def generate_bookmarks_for_pdf(
     pdf_bytes: bytes = None,
     extracted_pages: list[dict] = None,
     model_name: str = FALLBACK_MODEL,
-) -> list[dict]:
+    return_meta: bool = False,
+) -> list[dict] | dict:
     """
     PDF 텍스트를 추출(또는 이미 추출된 페이지 사용)한 뒤,
     대용량 문서를 청크 단위로 생성->병합하여 중첩 북마크(level)까지 생성합니다.
@@ -262,16 +264,26 @@ def generate_bookmarks_for_pdf(
     # 동일 PDF에 대한 중복 LLM 호출을 줄이기 위한 로컬 캐시
     cache_dir = os.path.join(os.path.dirname(__file__), ".cache")
     cache_path = None
+    requested_model = model_name
+    effective_model = model_name
+    fallback_used = False
     if pdf_bytes is not None:
         try:
             os.makedirs(cache_dir, exist_ok=True)
-            cache_path = _get_cache_path(pdf_bytes, cache_dir)
+            cache_path = _get_cache_path(pdf_bytes, cache_dir, model_name)
             if os.path.exists(cache_path):
                 logger.info(f"캐시에서 북마크 로드: {cache_path}")
                 with open(cache_path, "r", encoding="utf-8") as f:
                     cached = json.load(f)
                 if isinstance(cached, list):
                     logger.info(f"캐시 북마크 반환: {len(cached)}개 항목")
+                    if return_meta:
+                        return {
+                            "bookmarks": cached,
+                            "requested_model": requested_model,
+                            "effective_model": effective_model,
+                            "fallback_used": fallback_used,
+                        }
                     return cached
         except Exception as e:
             logger.warning(f"캐시 로드 실패: {str(e)}")
@@ -331,20 +343,22 @@ def generate_bookmarks_for_pdf(
         try:
             logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 호출 중... ({len(full_text)}자)")
             response = client.chat.completions.create(
-                model=model_name,
+                model=effective_model,
                 temperature=TEMPERATURE,
                 response_format={"type": "json_object"},
                 messages=request_messages,
             )
             logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 응답 수신 완료")
         except Exception as e:
-            if _should_fallback_model(str(e)) and model_name != FALLBACK_MODEL:
+            if _should_fallback_model(str(e)) and effective_model != FALLBACK_MODEL:
                 logger.warning(
-                    f"선택 모델이 유효하지 않아 fallback 모델로 재시도합니다: {model_name} -> {FALLBACK_MODEL}"
+                    f"선택 모델이 유효하지 않아 fallback 모델로 재시도합니다: {effective_model} -> {FALLBACK_MODEL}"
                 )
                 try:
+                    fallback_used = True
+                    effective_model = FALLBACK_MODEL
                     response = client.chat.completions.create(
-                        model=FALLBACK_MODEL,
+                        model=effective_model,
                         temperature=TEMPERATURE,
                         response_format={"type": "json_object"},
                         messages=request_messages,
@@ -398,4 +412,11 @@ def generate_bookmarks_for_pdf(
         except Exception as e:
             logger.warning(f"캐시 저장 실패: {str(e)}")
 
+    if return_meta:
+        return {
+            "bookmarks": merged,
+            "requested_model": requested_model,
+            "effective_model": effective_model,
+            "fallback_used": fallback_used,
+        }
     return merged

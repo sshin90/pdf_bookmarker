@@ -105,6 +105,7 @@ if uploaded_file is not None:
         st.session_state.pdf_bytes = uploaded_file.getvalue()
         st.session_state.bookmarks = None
         st.session_state.extracted_pages = None
+        st.session_state.current_df = None
         
     st.info(f"업로드 완료: {uploaded_file.name}")
     
@@ -160,15 +161,28 @@ if uploaded_file is not None:
                             st.warning("스캔본이거나 텍스트 레이어가 없는 이미지 형태의 문서일 가능성이 높습니다. 먼저 외부 OCR(광학 문자 인식) 프로그램을 통해 문서를 '텍스트 검색 가능한 형식'으로 변환한 뒤 다시 시도해 주세요.")
                             logger.warning(f"스캔본 감지: 평균 텍스트 길이 = {total_text_length / total_pages if total_pages > 0 else 0}")
                         else:
-                            st.info(f"📊 진행 중: OpenRouter 모델({selected_model})이 문서를 분석 중입니다...")
+                            model_status = st.empty()
+                            model_status.info(f"📊 진행 중: OpenRouter 모델({selected_model})이 문서를 분석 중입니다...")
                             
                             try:
-                                generated = generate_bookmarks_for_pdf(
+                                generation_result = generate_bookmarks_for_pdf(
                                     extracted_pages=st.session_state.extracted_pages,
                                     pdf_bytes=st.session_state.pdf_bytes,
                                     model_name=selected_model,
+                                    return_meta=True,
                                 )
-                                logger.info(f"AI 북마크 생성 완료: {len(generated)}개 항목")
+                                generated = generation_result.get("bookmarks", [])
+                                effective_model = generation_result.get("effective_model", selected_model)
+                                fallback_used = bool(generation_result.get("fallback_used", False))
+                                if fallback_used and effective_model != selected_model:
+                                    model_status.warning(
+                                        f"⚠️ 선택 모델({selected_model})이 사용 불가하여 fallback 모델({effective_model})로 분석했습니다."
+                                    )
+                                else:
+                                    model_status.info(f"✅ 분석 완료: 실제 사용 모델은 {effective_model} 입니다.")
+                                logger.info(
+                                    f"AI 북마크 생성 완료: {len(generated)}개 항목 (requested={selected_model}, effective={effective_model})"
+                                )
                             except Exception as e:
                                 st.error("AI 목차(북마크) 생성에 실패했습니다.")
                                 st.caption(str(e))
