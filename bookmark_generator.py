@@ -3,7 +3,14 @@ import json
 import re
 import hashlib
 import logging
+import time
 from openai import OpenAI
+from tenacity import (
+    Retrying,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception,
+)
 from pdf_processor import extract_text_from_pdf
 
 logger = logging.getLogger(__name__)
@@ -24,7 +31,15 @@ def _should_fallback_model(msg: str) -> bool:
         "not a valid model id" in lower_msg
         or "no endpoints found for" in lower_msg
         or ("error code: 404" in lower_msg and "model" in lower_msg)
+        # 429는 재시도 후에도 실패할 경우에만 최종적으로 fallback 처리하기 위해 별도 관리
     )
+
+def _is_rate_limit_error(e: Exception) -> bool:
+    """
+    OpenRouter 또는 업스트림의 429(Rate Limit) 에러인지 확인합니다.
+    """
+    s = str(e).lower()
+    return "429" in s or "rate limit" in s or "too many requests" in s or "resource_exhausted" in s
 
 def get_openrouter_client():
     """
@@ -228,6 +243,7 @@ def generate_bookmarks_for_pdf(
     extracted_pages: list[dict] = None,
     model_name: str = FALLBACK_MODEL,
     return_meta: bool = False,
+    on_status_update: callable = None,
 ) -> list[dict] | dict:
     """
     PDF 텍스트를 추출(또는 이미 추출된 페이지 사용)한 뒤,
@@ -340,34 +356,55 @@ def generate_bookmarks_for_pdf(
             {"role": "user", "content": full_text},
         ]
 
+        def call_openai_with_retry(m: str, msgs: list):
+            # tenacity를 사용해 429 에러 시 지수 백오프로 재시도
+            try:
+                for attempt in Retrying(
+                    stop=stop_after_attempt(5),
+                    wait=wait_exponential(multiplier=1, min=4, max=60),
+                    retry=retry_if_exception(_is_rate_limit_error),
+                    before_sleep=lambda retry_state: (
+                        on_status_update(
+                            f"⚠️ 과부하로 인해 재시도 중... ({retry_state.attempt_number}회차, "
+                            f"{retry_state.next_action.sleep:.1f}초 후 다시 시도)"
+                        ) if on_status_update else None
+                    ),
+                    reraise=True
+                ):
+                    with attempt:
+                        logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 호출 중... (모델={m})")
+                        res = client.chat.completions.create(
+                            model=m,
+                            temperature=TEMPERATURE,
+                            response_format={"type": "json_object"},
+                            messages=msgs,
+                        )
+                        return res
+            except Exception as e:
+                raise e
+
         try:
-            logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 호출 중... ({len(full_text)}자)")
-            response = client.chat.completions.create(
-                model=effective_model,
-                temperature=TEMPERATURE,
-                response_format={"type": "json_object"},
-                messages=request_messages,
-            )
+            response = call_openai_with_retry(effective_model, request_messages)
             logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 응답 수신 완료")
         except Exception as e:
-            if _should_fallback_model(str(e)) and effective_model != FALLBACK_MODEL:
+            err_msg = str(e)
+            # 만약 일반적인 모델 부재/오류거나, 재시도 끝에 429로 실패했다면 fallback 시도
+            if (_should_fallback_model(err_msg) or _is_rate_limit_error(e)) and effective_model != FALLBACK_MODEL:
                 logger.warning(
-                    f"선택 모델이 유효하지 않아 fallback 모델로 재시도합니다: {effective_model} -> {FALLBACK_MODEL}"
+                    f"선택 모델({effective_model}) 오류 또는 할당 초과로 fallback 모델로 시도합니다: -> {FALLBACK_MODEL}"
                 )
+                if on_status_update:
+                    on_status_update(f"🔄 모델 전환 중: {effective_model} -> {FALLBACK_MODEL} (이전 오류: 429)")
+                
                 try:
                     fallback_used = True
                     effective_model = FALLBACK_MODEL
-                    response = client.chat.completions.create(
-                        model=effective_model,
-                        temperature=TEMPERATURE,
-                        response_format={"type": "json_object"},
-                        messages=request_messages,
-                    )
+                    response = call_openai_with_retry(effective_model, request_messages)
                 except Exception as fallback_error:
-                    logger.error(f"청크 {idx} OpenRouter fallback 호출 실패: {str(fallback_error)}")
+                    logger.error(f"청크 {idx} OpenRouter fallback 호출 최종 실패: {str(fallback_error)}")
                     raise RuntimeError(_format_llm_error(fallback_error)) from fallback_error
             else:
-                logger.error(f"청크 {idx} OpenRouter 호출 실패: {str(e)}")
+                logger.error(f"청크 {idx} OpenRouter 호출 실패: {err_msg}")
                 raise RuntimeError(_format_llm_error(e)) from e
 
         content = (response.choices[0].message.content or "").strip()

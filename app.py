@@ -170,6 +170,7 @@ if uploaded_file is not None:
                                     pdf_bytes=st.session_state.pdf_bytes,
                                     model_name=selected_model,
                                     return_meta=True,
+                                    on_status_update=model_status.warning,
                                 )
                                 generated = generation_result.get("bookmarks", [])
                                 effective_model = generation_result.get("effective_model", selected_model)
