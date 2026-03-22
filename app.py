@@ -28,7 +28,7 @@ st.set_page_config(page_title="PDF 자동 북마크 생성기", layout="wide")
 
 MODEL_OPTIONS = [
     "openrouter/free",
-    "google/gemini-2.0-flash-exp:free",
+    "google/gemini-2.0-flash-001",
     "google/gemma-3-27b-it:free",
     "mistralai/mistral-small-3.1-24b-instruct:free",
     "meta-llama/llama-3.3-70b-instruct:free",

@@ -59,10 +59,9 @@ def get_openrouter_client():
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
         default_headers={
-            "HTTP-Referer": "http://localhost:8501",
-            # HTTP 헤더 값은 배포 환경에서 ASCII 제한에 걸릴 수 있어 영문으로 고정합니다.
-            "X-Title": "pdf_bookmarker",
-        },
+            "HTTP-Referer": "https://github.com/sshin90/pdf_bookmarker", # 앱 정보 제공 (선택)
+            "X-Title": "PDF Bookmarker",
+        }
     )
 
 def _normalize_title(title: str) -> str | None:
