@@ -6,12 +6,15 @@ import pandas as pd
 from pdf_processor import read_existing_bookmarks, apply_bookmarks, extract_text_from_pdf
 from bookmark_generator import generate_bookmarks_for_pdf
 
+__version__ = "0.2.0"
+
 # 로깅 설정
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - v' + __version__ + ' - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
 
 load_dotenv()
 
@@ -82,7 +85,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("📚 PDF 자동 북마크(목차) 생성기")
+st.title(f"📚 PDF 자동 북마크(목차) 생성기 v{__version__}")
 st.write("PDF 파일을 업로드하시면 텍스트 문맥을 분석하여 알맞은 북마크(목차)를 제안합니다.")
 selected_model = st.selectbox(
     "사용할 AI 모델(모두 무료)을 선택하세요 (권장: openrouter/free)",
@@ -374,15 +377,19 @@ if st.session_state.bookmarks is not None:
 
         # 3) 실시간으로 변경된 북마크 정보를 반영한 PDF 생성
         final_bookmarks = st.session_state.bookmarks or []
-        new_pdf_data = apply_bookmarks(st.session_state.pdf_bytes, final_bookmarks)
-
-        st.download_button(
-            label="📥 북마크가 적용된 PDF 다운로드",
-            data=new_pdf_data,
-            file_name=download_filename,
-            mime="application/pdf",
-            use_container_width=True,
-            type="primary",
-        )
+        try:
+            new_pdf_data = apply_bookmarks(st.session_state.pdf_bytes, final_bookmarks)
+            
+            st.download_button(
+                label="📥 북마크가 적용된 PDF 다운로드",
+                data=new_pdf_data,
+                file_name=download_filename,
+                mime="application/pdf",
+                use_container_width=True,
+                type="primary",
+            )
+        except Exception as e:
+            st.error(f"PDF 생성 중 오류가 발생했습니다: {str(e)}")
+            logger.error(f"PDF 생성 오류: {str(e)}", exc_info=True)
     else:
         st.warning("PDF 파일을 업로드하고 북마크를 생성하면 다운로드 버튼이 나타납니다.")
