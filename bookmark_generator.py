@@ -331,9 +331,12 @@ def generate_bookmarks_for_pdf(
     # 무료 티어에서 429가 자주 나오는 것을 막기 위해 호출 횟수(=청크 수)를 줄입니다.
     chunks = _build_chunks_adaptive(pages, target_max_chunks=TARGET_MAX_CHUNKS, start_max_chars=DEFAULT_CHUNK_SIZE)
     candidates: list[dict] = []
-    logger.info(f"OpenRouter API 호출 시작: {len(chunks)}개 청크, 모델={model_name}")
+    if on_status_update:
+        on_status_update(f"⏳ 분석 준비 완료: 총 {len(chunks)}개 구획으로 나누어 분석을 시작합니다.")
 
     for idx, chunk_pages in enumerate(chunks, 1):
+        if on_status_update:
+            on_status_update(f"🔄 분석 중 ({idx}/{len(chunks)}): AI가 문서 내용을 파악하고 있습니다...")
         full_text = ""
         for page_data in chunk_pages:
             current_text = page_data["text"]
@@ -435,6 +438,8 @@ def generate_bookmarks_for_pdf(
             )
             chunk_bookmarks.append(str(bm.get("title", "")))
         logger.info(f"청크 {idx}: {len(chunk_bookmarks)}개 북마크 추출")
+        if on_status_update:
+            on_status_update(f"✅ {idx}/{len(chunks)} 구획 분석 성공 ({len(chunk_bookmarks)}개 항목 발견)")
 
     merged = _merge_and_dedupe(candidates)
     logger.info(f"최종 북마크: {len(merged)}개 항목")
