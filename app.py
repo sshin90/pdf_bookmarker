@@ -165,7 +165,6 @@ if uploaded_file is not None:
                             logger.warning(f"스캔본 감지: 평균 텍스트 길이 = {total_text_length / total_pages if total_pages > 0 else 0}")
                         else:
                             model_status = st.empty()
-                            model_status.info(f"📊 진행 중: OpenRouter 모델({selected_model})이 문서를 분석 중입니다...")
                             
                             try:
                                 generation_result = generate_bookmarks_for_pdf(
@@ -173,17 +172,17 @@ if uploaded_file is not None:
                                     pdf_bytes=st.session_state.pdf_bytes,
                                     model_name=selected_model,
                                     return_meta=True,
-                                    on_status_update=model_status.warning,
+                                    on_status_update=model_status.info,
                                 )
                                 generated = generation_result.get("bookmarks", [])
                                 effective_model = generation_result.get("effective_model", selected_model)
                                 fallback_used = bool(generation_result.get("fallback_used", False))
                                 if fallback_used and effective_model != selected_model:
-                                    model_status.warning(
+                                    st.warning(
                                         f"⚠️ 선택 모델({selected_model})이 사용 불가하여 fallback 모델({effective_model})로 분석했습니다."
                                     )
                                 else:
-                                    model_status.info(f"✅ 분석 완료: 실제 사용 모델은 {effective_model} 입니다.")
+                                    model_status.success(f"✅ 분석 완료: 실제 사용 모델은 {effective_model} 입니다.")
                                 logger.info(
                                     f"AI 북마크 생성 완료: {len(generated)}개 항목 (requested={selected_model}, effective={effective_model})"
                                 )
@@ -326,14 +325,17 @@ if st.session_state.bookmarks is not None:
         },
     )
 
-    # edited_df를 사용해서 미리보기를 실시간 업데이트
+    # edited_df를 사용하여 제목/레벨 수정 시 실시간으로 미리보기 업데이트
     if edited_df is not None:
-        updated_df = edited_df.copy()
-        updated_df['preview'] = updated_df.apply(
-            lambda row: "        " * (max(1, int(row.get("level", 1))) - 1) + str(row.get("title", "")),
-            axis=1
-        )
-        st.session_state.current_df = updated_df
+        # 현재 세션 상태와 에디터의 데이터가 다를 때만(수정이 발생했을 때만) 업데이트 수행
+        if not edited_df.equals(st.session_state.current_df):
+            updated_df = edited_df.copy()
+            updated_df['preview'] = updated_df.apply(
+                lambda row: "        " * (max(1, int(row.get("level", 1))) - 1) + str(row.get("title", "")),
+                axis=1
+            )
+            st.session_state.current_df = updated_df
+            st.rerun()
 
     edited_records = edited_df.to_dict("records") if edited_df is not None else []
 
