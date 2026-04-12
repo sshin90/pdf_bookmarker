@@ -18,60 +18,59 @@ PDF 파일을 업로드하면 문서 텍스트를 분석해 북마크(목차)를
 
 ## 빠른 시작
 
-### 1) 저장소 클론
+### 권장 방식 (uv 사용)
 
+[`uv`](https://github.com/astral-sh/uv)가 설치되어 있다면 가장 빠르고 안정적으로 실행할 수 있습니다.
+
+```powershell
+# 1) 저장소 클론 및 이동
+git clone https://github.com/sshin90/pdf_bookmarker.git
+cd pdf_bookmarker
+
+# 2) 가상환경 생성 및 의존성 설치
+uv venv
+uv pip install -r requirements.txt
+
+# 3) 환경 변수 설정 (.env 파일 생성 후 API 키 입력)
+cp .env.example .env
+
+# 4) 앱 실행
+uv run streamlit run app.py
+```
+
+### 일반 방식 (venv 사용)
+
+#### 1) 저장소 클론
 ```bash
 git clone https://github.com/sshin90/pdf_bookmarker.git
 cd pdf_bookmarker
 ```
 
-### 2) 가상환경 생성/활성화
-
+#### 2) 가상환경 생성/활성화
 Windows PowerShell:
-
 ```powershell
 python -m venv .venv
 & .\.venv\Scripts\Activate.ps1
 ```
-
 macOS/Linux:
-
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3) 의존성 설치
-
+#### 3) 의존성 설치 및 실행
 ```bash
 pip install -r requirements.txt
-```
-
-### 4) 환경 변수 설정
-
-`.env.example`을 복사해 `.env`를 만든 뒤 값을 채웁니다.
-
-```bash
 cp .env.example .env
-```
-
-`.env`:
-
-```env
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-```
-
-### 5) 앱 실행
-
-```bash
 streamlit run app.py
 ```
 
-브라우저에서 `http://localhost:8501`로 접속합니다.
-
-### 6) 스모크 테스트(선택)
-
+### 스모크 테스트(선택)
 ```bash
+# uv 사용 시
+uv run pytest -q
+
+# 일반 venv 사용 시
 pytest -q
 ```
 
@@ -83,6 +82,7 @@ pytest -q
 
 - `google/gemini-2.0-flash-lite-preview-02-05:free`
 - `google/gemma-3-27b-it:free`
+- `google/gemma-4-31b-it:free`
 - `mistralai/pixtral-12b:free`
 - `mistralai/mistral-small-3.1-24b-instruct:free`
 - `meta-llama/llama-3.3-70b-instruct:free`

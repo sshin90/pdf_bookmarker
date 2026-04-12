@@ -1,0 +1,236 @@
+[     UTC     ] Logs for pdfbookmarker.streamlit.app/
+
+────────────────────────────────────────────────────────────────────────────────────────
+
+[15:02:11] 🖥 Provisioning machine...
+
+[15:02:11] 🎛 Preparing system...
+
+[15:02:11] ⛓ Spinning up manager process...
+
+[15:02:11] 🚀 Starting up repository: 'pdf_bookmarker', branch: 'main', main module: 'app.py'
+
+[15:02:11] 🐙 Cloning repository...
+
+[15:02:12] 🐙 Cloning into '/mount/src/pdf_bookmarker'...
+
+[15:02:12] 🐙 Cloned repository!
+
+[15:02:12] 🐙 Pulling code changes from Github...
+
+[15:02:12] 📦 Processing dependencies...
+
+
+──────────────────────────────────────── uv ───────────────────────────────────────────
+
+
+Using uv pip install.
+
+Using Python 3.14.3 environment at /home/adminuser/venv
+
+  × No solution found when resolving dependencies:[2026-03-21 15:02:13.140489] 
+
+  ╰─▶ Because streamlit==1.55.0 depends on pandas>=1.4.0,<3 and you require
+
+      streamlit==1.55.0, we can conclude that you require pandas>=1.4.0,<3.
+
+      And because you require pandas==3.0.1, we can conclude that your
+
+      requirements are unsatisfiable.[2026-03-21 15:02:13.140990] 
+
+Checking if Streamlit is installed
+
+Installing rich for an improved exception logging
+
+Using uv pip install.
+
+Using Python 3.14.3 environment at /home/adminuser/venv
+
+Resolved 4 packages in 150ms
+
+Prepared 4 packages in 133ms
+
+Installed 4 packages in 15ms
+
+ [2026-03-21 15:02:13.570754] + markdown-it-py==4.0.0
+
+ + mdurl==0.1.2
+
+ + pygments==2.19.2
+
+ + rich==14.3.3
+
+
+────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+──────────────────────────────────────── pip ───────────────────────────────────────────
+
+
+Using standard pip install.
+
+Collecting streamlit==1.55.0 (from -r /mount/src/pdf_bookmarker/requirements.txt (line 1))
+
+  Downloading streamlit-1.55.0-py3-none-any.whl.metadata (9.8 kB)
+
+Collecting PyMuPDF==1.27.2.2 (from -r /mount/src/pdf_bookmarker/requirements.txt (line 2))
+
+  Downloading pymupdf-1.27.2.2-cp310-abi3-manylinux_2_28_x86_64.whl.metadata (3.4 kB)
+
+Collecting openai==2.29.0 (from -r /mount/src/pdf_bookmarker/requirements.txt (line 3))
+
+  Downloading openai-2.29.0-py3-none-any.whl.metadata (29 kB)
+
+Collecting python-dotenv==1.2.2 (from -r /mount/src/pdf_bookmarker/requirements.txt (line 4))
+
+  Downloading python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)
+
+Collecting pandas==3.0.1 (from -r /mount/src/pdf_bookmarker/requirements.txt (line 5))
+
+  Downloading pandas-3.0.1-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (79 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 79.5/79.5 kB 26.1 MB/s eta 0:00:00[2026-03-21 15:02:15.714465] 
+
+Collecting pytest==9.0.2 (from -r /mount/src/pdf_bookmarker/requirements.txt (line 6))
+
+  Downloading pytest-9.0.2-py3-none-any.whl.metadata (7.6 kB)
+
+Collecting altair!=5.4.0,!=5.4.1,<7,>=4.0 (from streamlit==1.55.0->-r /mount/src/pdf_bookmarker/requirements.txt (line 1))
+
+  Downloading altair-6.0.0-py3-none-any.whl.metadata (11 kB)
+
+Collecting blinker<2,>=1.5.0 (from streamlit==1.55.0->-r /mount/src/pdf_bookmarker/requirements.txt (line 1))
+
+  Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)
+
+Collecting cachetools<8,>=5.5 (from streamlit==1.55.0->-r /mount/src/pdf_bookmarker/requirements.txt (line 1))
+
+  Downloading cachetools-7.0.5-py3-none-any.whl.metadata (5.6 kB)
+
+Collecting click<9,>=7.0 (from streamlit==1.55.0->-r /mount/src/pdf_bookmarker/requirements.txt (line 1))
+
+  Downloading click-8.3.1-py3-none-any.whl.metadata (2.6 kB)
+
+Collecting gitpython!=3.1.19,<4,>=3.0.7 (from streamlit==1.55.0->-r /mount/src/pdf_bookmarker/requirements.txt (line 1))
+
+  Downloading gitpython-3.1.46-py3-none-any.whl.metadata (13 kB)
+
+Collecting numpy<3,>=1.23 (from streamlit==1.55.0->-r /mount/src/pdf_bookmarker/requirements.txt (line 1))
+
+  Downloading numpy-2.4.3-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+
+Collecting packaging>=20 (from streamlit==1.55.0->-r /mount/src/pdf_bookmarker/requirements.txt (line 1))
+
+  Downloading packaging-26.0-py3-none-any.whl.metadata (3.3 kB)
+
+INFO: pip is looking at multiple versions of streamlit to determine which version is compatible with other requirements. This could take a while.
+
+ERROR: Cannot install -r /mount/src/pdf_bookmarker/requirements.txt (line 1) and pandas==3.0.1 because these package versions have conflicting dependencies.
+
+
+The conflict is caused by:
+
+    The user requested pandas==3.0.1
+
+    streamlit 1.55.0 depends on pandas<3 and >=1.4.0
+
+
+To fix this you could try to:
+
+1. loosen the range of package versions you've specified
+
+2. remove package versions to allow pip attempt to solve the dependency conflict
+
+
+ERROR: ResolutionImpossible: for help visit https://pip.pypa.io/en/latest/topics/dependency-resolution/#dealing-with-dependency-conflicts
+
+
+[notice] A new release of pip is available: 24.0 -> 26.0.1
+
+[notice] To update, run: pip install --upgrade pip
+
+Checking if Streamlit is installed
+
+Installing rich for an improved exception logging
+
+Using standard pip install.
+
+Collecting rich>=10.14.0
+
+  Downloading rich-14.3.3-py3-none-any.whl.metadata (18 kB)
+
+Collecting markdown-it-py>=2.2.0 (from rich>=10.14.0)
+
+  Downloading markdown_it_py-4.0.0-py3-none-any.whl.metadata (7.3 kB)
+
+Collecting pygments<3.0.0,>=2.13.0 (from rich>=10.14.0)
+
+  Downloading pygments-2.19.2-py3-none-any.whl.metadata (2.5 kB)
+
+Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=10.14.0)
+
+  Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+
+Downloading rich-14.3.3-py3-none-any.whl (310 kB)
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 310.5/310.5 kB 18.2 MB/s eta 0:00:00[2026-03-21 15:02:18.076999] 
+
+Downloading markdown_it_py-4.0.0-py3-none-any.whl (87 kB)
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 87.3/87.3 kB 285.0 MB/s eta 0:00:00[2026-03-21 15:02:18.089571] 
+
+Downloading pygments-2.19.2-py3-none-any.whl (1.2 MB)
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 102.1 MB/s eta 0:00:00[2026-03-21 15:02:18.114014] 
+
+Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+
+Installing collected packages: pygments, mdurl, markdown-it-py, rich
+
+  Attempting uninstall: pygments
+
+    Found existing installation: Pygments 2.19.2
+
+    Uninstalling Pygments-2.19.2:
+
+      Successfully uninstalled Pygments-2.19.2
+
+  Attempting uninstall: mdurl
+
+    Found existing installation: mdurl 0.1.2
+
+    Uninstalling mdurl-0.1.2:
+
+      Successfully uninstalled mdurl-0.1.2
+
+  Attempting uninstall: markdown-it-py
+
+    Found existing installation: markdown-it-py 4.0.0
+
+    Uninstalling markdown-it-py-4.0.0:
+
+      Successfully uninstalled markdown-it-py-4.0.0
+
+  Attempting uninstall: rich
+
+    Found existing installation: rich 14.3.3
+
+    Uninstalling rich-14.3.3:
+
+      Successfully uninstalled rich-14.3.3
+
+Successfully installed markdown-it-py-4.0.0 mdurl-0.1.2 pygments-2.19.2 rich-14.3.3
+
+
+[notice] A new release of pip is available: 24.0 -> 26.0.1
+
+[notice] To update, run: pip install --upgrade pip
+
+
+────────────────────────────────────────────────────────────────────────────────────────
+
+
+[15:02:21] ❗️ installer returned a non-zero exit code
+
+[15:02:21] ❗️ Error during processing dependencies! Please fix the error and push an update, or try restarting the app.

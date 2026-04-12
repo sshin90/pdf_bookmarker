@@ -41,6 +41,70 @@ def _is_rate_limit_error(e: Exception) -> bool:
     s = str(e).lower()
     return "429" in s or "rate limit" in s or "too many requests" in s or "resource_exhausted" in s
 
+def _is_json_mode_unsupported_error(e: Exception) -> bool:
+    """
+    모델 또는 제공자가 response_format(JSON 모드)를 지원하지 않는 에러인지 확인합니다.
+    """
+    s = str(e).lower()
+    return "response_format is not supported" in s
+
+def _is_system_message_unsupported_error(e: Exception) -> bool:
+    """
+    모델 또는 제공자가 system 역할을 지원하지 않는 에러인지 확인합니다.
+    (예: "Developer instruction is not enabled")
+    """
+    s = str(e).lower()
+    return (
+        "developer instruction is not enabled" in s 
+        or "system instruction is not enabled" in s 
+        or "system role is not supported" in s
+    )
+
+def _merge_system_message(messages: list[dict]) -> list[dict]:
+    """
+    system 메시지가 포함되어 있다면 이를 첫 번째 user 메시지 앞에 통합합니다.
+    """
+    system_msgs = [m for m in messages if m["role"] == "system"]
+    if not system_msgs:
+        return messages
+    
+    # 시스템 메시지 내용 합치기
+    system_content = "\n\n".join([m["content"] for m in system_msgs])
+    
+    # 나머지 메시지들
+    other_msgs = [m for m in messages if m["role"] != "system"]
+    
+    if other_msgs and other_msgs[0]["role"] == "user":
+        # 첫 번째 사용자 메시지에 결합
+        new_first_msg = {
+            "role": "user",
+            "content": f"[SYSTEM INSTRUCTION]\n{system_content}\n\n[USER INPUT]\n{other_msgs[0]['content']}"
+        }
+        return [new_first_msg] + other_msgs[1:]
+    else:
+        # 사용자 메시지가 없거나 형식이 다르면 그냥 맨 앞에 사용자 메시지로 추가
+        return [{"role": "user", "content": f"[SYSTEM INSTRUCTION]\n{system_content}"}] + other_msgs
+
+def _clean_json_content(content: str) -> str:
+    """
+    마크다운 코드 블록이나 불필요한 텍스트를 제거하고 JSON 문자열만 추출합니다.
+    """
+    content = content.strip()
+    # 마크다운 코드 블록 제거 (```json ... ``` 또는 ``` ... ```)
+    if "```" in content:
+        # 정규표현식으로 ``` 뒤의 내용을 가져옴
+        m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
+        if m:
+            return m.group(1).strip()
+    
+    # 중괄호 범위를 찾아내어 추출 (가장 바깥쪽 { })
+    start = content.find('{')
+    end = content.rfind('}')
+    if start != -1 and end != -1 and end > start:
+        return content[start:end+1]
+        
+    return content
+
 def get_openrouter_client():
     """
     OpenRouter API 클라이언트를 가져옵니다.
@@ -358,7 +422,7 @@ def generate_bookmarks_for_pdf(
             {"role": "user", "content": full_text},
         ]
 
-        def call_openai_with_retry(m: str, msgs: list):
+        def call_openai_with_retry(m: str, msgs: list, use_json_mode: bool = True):
             # tenacity를 사용해 429 에러 시 지수 백오프로 재시도
             try:
                 for attempt in Retrying(
@@ -374,19 +438,45 @@ def generate_bookmarks_for_pdf(
                     reraise=True
                 ):
                     with attempt:
-                        logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 호출 중... (모델={m})")
-                        res = client.chat.completions.create(
-                            model=m,
-                            temperature=TEMPERATURE,
-                            response_format={"type": "json_object"},
-                            messages=msgs,
-                        )
-                        return res
+                        logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 호출 중... (모델={m}, JSON_MODE={use_json_mode})")
+                        extra_args = {}
+                        if use_json_mode:
+                            extra_args["response_format"] = {"type": "json_object"}
+                            
+                        try:
+                            res = client.chat.completions.create(
+                                model=m,
+                                temperature=TEMPERATURE,
+                                messages=msgs,
+                                **extra_args
+                            )
+                            return res
+                        except Exception as inner_e:
+                            # 시스템 메시지 비지원 에러 시 즉시 메시지 변환 후 재시도
+                            if _is_system_message_unsupported_error(inner_e):
+                                logger.warning(f"모델 {m}이 시스템 메시지를 지원하지 않습니다. 사용자 메시지로 통합하여 재시도합니다.")
+                                merged_msgs = _merge_system_message(msgs)
+                                res = client.chat.completions.create(
+                                    model=m,
+                                    temperature=TEMPERATURE,
+                                    messages=merged_msgs,
+                                    **extra_args
+                                )
+                                return res
+                            raise inner_e
             except Exception as e:
                 raise e
 
         try:
-            response = call_openai_with_retry(effective_model, request_messages)
+            try:
+                response = call_openai_with_retry(effective_model, request_messages, use_json_mode=True)
+            except Exception as e:
+                # 만약 JSON 모드 미지원 에러라면 일반 모드로 즉시 재시도 (시스템 메시지는 call_openai_with_retry 내부에서 처리됨)
+                if _is_json_mode_unsupported_error(e):
+                    logger.warning(f"모델 {effective_model}이 JSON 모드를 지원하지 않습니다. 일반 모드로 재시도합니다.")
+                    response = call_openai_with_retry(effective_model, request_messages, use_json_mode=False)
+                else:
+                    raise e
             logger.debug(f"청크 {idx}/{len(chunks)} OpenRouter 응답 수신 완료")
         except Exception as e:
             err_msg = str(e)
@@ -396,12 +486,20 @@ def generate_bookmarks_for_pdf(
                     f"선택 모델({effective_model}) 오류 또는 할당 초과로 fallback 모델로 시도합니다: -> {FALLBACK_MODEL}"
                 )
                 if on_status_update:
-                    on_status_update(f"🔄 모델 전환 중: {effective_model} -> {FALLBACK_MODEL} (이전 오류: 429)")
+                    on_status_update(f"🔄 모델 전환 중: {effective_model} -> {FALLBACK_MODEL} (이전 오류: 429/비지원)")
                 
                 try:
                     fallback_used = True
                     effective_model = FALLBACK_MODEL
-                    response = call_openai_with_retry(effective_model, request_messages)
+                    try:
+                        response = call_openai_with_retry(effective_model, request_messages, use_json_mode=True)
+                    except Exception as fe:
+                        # Fallback 모델 호출 시에도 JSON 모드 미지원 여부 확인
+                        if _is_json_mode_unsupported_error(fe):
+                            logger.warning(f"Fallback 모델 {effective_model}이 JSON 모드를 지원하지 않습니다. 일반 모드로 시도합니다.")
+                            response = call_openai_with_retry(effective_model, request_messages, use_json_mode=False)
+                        else:
+                            raise fe
                 except Exception as fallback_error:
                     logger.error(f"청크 {idx} OpenRouter fallback 호출 최종 실패: {str(fallback_error)}")
                     raise RuntimeError(_format_llm_error(fallback_error)) from fallback_error
@@ -415,9 +513,12 @@ def generate_bookmarks_for_pdf(
             continue
 
         try:
-            result = json.loads(content)
+            # JSON 클리닝 적용
+            cleaned_content = _clean_json_content(content)
+            result = json.loads(cleaned_content)
         except json.JSONDecodeError:
-            logger.warning(f"청크 {idx}: JSON 파싱 실패")
+            logger.warning(f"청크 {idx}: JSON 파싱 실패 (원본 길이: {len(content)})")
+            logger.debug(f"실패한 JSON 내용 요약: {content[:100]}...")
             continue
 
         bookmarks = result.get("bookmarks") if isinstance(result, dict) else None
