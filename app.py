@@ -33,6 +33,7 @@ MODEL_OPTIONS = [
     "openrouter/free",
     "google/gemini-2.0-flash-001",
     "google/gemma-3-27b-it:free",
+    "google/gemma-4-31b-it:free",
     "mistralai/mistral-small-3.1-24b-instruct:free",
     "meta-llama/llama-3.3-70b-instruct:free",
 ]
@@ -88,7 +89,7 @@ st.markdown(
 st.title(f"📚 PDF 자동 북마크(목차) 생성기 v{__version__}")
 st.write("PDF 파일을 업로드하시면 텍스트 문맥을 분석하여 알맞은 북마크(목차)를 제안합니다.")
 selected_model = st.selectbox(
-    "사용할 AI 모델(모두 무료)을 선택하세요 (권장: openrouter/free)",
+    "사용할 무료 AI 모델을 선택하세요.",
     MODEL_OPTIONS,
     index=0,
 )
@@ -305,6 +306,24 @@ if st.session_state.bookmarks is not None:
         """,
         unsafe_allow_html=True,
     )
+
+    # 북마크 관리 툴바 및 가이드
+    col_m1, col_m2 = st.columns([1, 2])
+    with col_m1:
+        if st.button("👯 중복 제목 제거", use_container_width=True, help="동일한 제목을 가진 북마크 중 첫 번째만 남기고 정리합니다."):
+            if st.session_state.current_df is not None:
+                # 제목(title) 기준 중복 제거 (첫 번째 항목 유지)
+                before_count = len(st.session_state.current_df)
+                st.session_state.current_df = st.session_state.current_df.drop_duplicates(subset=['title'], keep='first')
+                after_count = len(st.session_state.current_df)
+                if before_count > after_count:
+                    st.success(f"✅ {before_count - after_count}개의 중복 북마크를 제거했습니다.")
+                    st.rerun()
+                else:
+                    st.info("중복된 제목의 북마크가 없습니다.")
+    
+    with col_m2:
+        st.info("💡 **팁**: 행 왼쪽의 체크박스를 선택한 후 `Delete` 키를 누르면 개별/일괄 삭제가 가능합니다.")
 
     edited_df = st.data_editor(
         st.session_state.current_df,
